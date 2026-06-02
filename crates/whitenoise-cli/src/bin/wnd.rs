@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
 use clap::Parser;
+#[cfg(feature = "db-keystore")]
+use db_keystore::{DbKeyStore, DbKeyStoreConfig};
 use nostr_sdk::RelayUrl;
 
 use whitenoise::{Whitenoise, WhitenoiseConfig};
@@ -43,6 +45,27 @@ fn parse_relay_urls(values: &[String], flag: &str) -> whitenoise_cli::Result<Vec
 async fn main() -> whitenoise_cli::Result<()> {
     let args = Args::parse();
     let config = Config::resolve(args.data_dir.as_ref(), args.logs_dir.as_ref());
+
+    #[cfg(feature = "db-keystore")]
+    {
+        let path = dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("keystore")
+            .join("wnd.sqlite");
+
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| CliError::msg(format!("failed to create keystore dir: {e}")))?;
+        }
+        let db_keystore_config = DbKeyStoreConfig {
+            path,
+            ..Default::default()
+        };
+        let db_keystore = DbKeyStore::new(db_keystore_config)
+            .map_err(|e| CliError::msg(format!("failed to open keystore: {e}")))?;
+
+        keyring_core::set_default_store(db_keystore);
+    }
 
     let mut wn_config =
         WhitenoiseConfig::new(&config.data_dir, &config.logs_dir, KEYRING_SERVICE_ID);

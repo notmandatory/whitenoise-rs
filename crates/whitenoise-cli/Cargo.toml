@@ -21,6 +21,14 @@ chrono = { workspace = true }
 tracing = { workspace = true }
 hex = { workspace = true }
 
+# optional features
+db_keystore = { package = "db-keystore", version = "0.4.2", optional = true }
+keyring-core = { version = "1", optional = true }
+
+[features]
+# Enable to use db keystore (i.e., when testing or on a headless system)
+db-keystore = ["db_keystore", "keyring-core"]
+
 [dev-dependencies]
 whitenoise = { path = "../..", features = ["cli", "integration-tests"] }
 tokio = { workspace = true, features = ["test-util"] }
